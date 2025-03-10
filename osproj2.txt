@@ -1,0 +1,510 @@
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#define PROCESSES_NUM 7
+#define PERIOD 200
+  typedef struct  {
+    int ID;
+    int arrivalTime;
+    int burstTime;
+    int remainingTime;
+    int comesBackAfter;
+    int priority;
+    int waitingTime;
+    int turnaroundTime;
+    int completionTime;
+    int executedTime;
+ }cpuScheduling;
+void firstComeFirstServed(cpuScheduling process[]) {
+    int currentTime = 0,i,waiting=0,turnaround=0;
+    double avgW,avgT;
+    printf("Gantt Chart:\n");
+          while(currentTime<PERIOD) {
+    for (i = 0; i < PROCESSES_NUM; i++) { // process in the ready queue
+        while (currentTime < process[i].arrivalTime) {
+            currentTime++;
+        }
+
+        process[i].waitingTime = currentTime - process[i].arrivalTime;
+        process[i].turnaroundTime = process[i].waitingTime + process[i].burstTime;
+
+        if (process[i].remainingTime > (PERIOD - currentTime)) { // check the remaining time of the process
+            process[i].completionTime = PERIOD - currentTime;
+        } else {
+            process[i].completionTime = process[i].remainingTime;
+        }
+        currentTime = currentTime + process[i].completionTime; //10 //18 //32
+        process[i].remainingTime = process[i].remainingTime- process[i].completionTime;
+        if (process[i].remainingTime == 0) {
+            // Process completes its burst time, goes to waiting queue, and comes back after the specified time
+            process[i].arrivalTime = currentTime + process[i].comesBackAfter;
+            process[i].remainingTime = process[i].burstTime;
+            process[i].turnaroundTime += currentTime - process[i].arrivalTime+process[i].remainingTime;
+
+        }
+        for (int j = 0; j < process[i].burstTime; j++) {
+            printf("P%d ", i + 1);
+        }
+        if (currentTime >= PERIOD) {
+            break;
+        }
+
+    }
+}
+    printf("\n\n");
+
+    // calculate the average waiting,turnaround time
+    for (int j = 0; j < PROCESSES_NUM; j++) {
+    waiting+=process[j].waitingTime;
+    turnaround+=process[j].turnaroundTime;
+
+    }
+    avgW= (double )waiting/PROCESSES_NUM;
+    avgT= (double )turnaround/PROCESSES_NUM;
+    printf("Average Waiting Time  %f ms\n",avgW);
+    printf("Average Turnaround Time %f ms\n",avgT);
+
+
+}
+void shortestJobFirst(cpuScheduling process[]) {
+    int currentTime = 0, i, j,waiting=0,turnaround=0;
+    double avgW,avgT;
+
+    printf("Gantt Chart:\n");
+    for (i = 0; i < PROCESSES_NUM; i++) {
+        process[i].remainingTime = process[i].burstTime;
+        process[i].waitingTime = 0;
+        process[i].completionTime = 0;
+        process[i].turnaroundTime = 0;
+
+    }
+
+
+        while (currentTime < PERIOD) {
+
+            for (i = 0; i < PROCESSES_NUM; i++) {
+                // sorting process according to the burst time
+                for (j = 0; j < PROCESSES_NUM -i-1; j++) {
+                    if (process[j].burstTime > process[j + 1].burstTime) {
+                        cpuScheduling temp = process[j];
+                        process[j] = process[j + 1];
+                        process[j + 1] = temp;
+
+                    }
+                }
+
+
+            }
+            for (i = 0; i < PROCESSES_NUM; i++) {
+                if (currentTime < process[i].arrivalTime) {
+                    currentTime++;
+                }
+
+
+                if (process[i].remainingTime > 0) {
+                    // Update waiting and turnaround times
+                    process[i].waitingTime = currentTime - process[i].arrivalTime; //0
+                    process[i].turnaroundTime = process[i].waitingTime + process[i].burstTime;//10
+                }
+
+
+                if (process[i].remainingTime > (PERIOD - currentTime)) { // check the remaining time of the process
+                    process[i].completionTime = PERIOD - currentTime;
+                } else {
+                    process[i].completionTime = process[i].remainingTime; //10
+                }
+                currentTime = currentTime + process[i].completionTime; //10
+                process[i].remainingTime = process[i].remainingTime - process[i].completionTime; //0
+                if (process[i].remainingTime == 0) {
+                    // Process completes its burst time, goes to waiting queue, and comes back after the specified time
+                    process[i].arrivalTime = currentTime + process[i].comesBackAfter; //12
+                    process[i].remainingTime = process[i].burstTime;//10
+
+                }
+                for (int k = 0; k < PROCESSES_NUM; k++) {
+                    printf(" P%d ",process[k].ID);
+
+                }
+            }
+            if (currentTime >= PERIOD) {
+                break;
+            }
+
+        }
+    printf("\n\n");
+    // calculate the average waiting,turnaround time
+    for ( j = 0; j < PROCESSES_NUM; j++) {
+        waiting+=process[j].waitingTime;
+        turnaround+=process[j].turnaroundTime;
+
+    }
+    avgW= (double )waiting/PROCESSES_NUM;
+    avgT= (double )turnaround/PROCESSES_NUM;
+    printf("Average Waiting Time  %f ms\n",avgW);
+    printf("Average Turnaround Time %f ms\n",avgT);
+
+
+
+    }
+void shortestRemainingTimeFirst(cpuScheduling process[]) {
+    int currentTime = 0, i, j,waiting=0,turnaround=0,shortestIndex;
+    double avgW,avgT;
+    for (i = 0; i < PROCESSES_NUM; i++) {
+        process[i].remainingTime = process[i].burstTime;
+        process[i].waitingTime = 0;
+        process[i].completionTime = 0;
+        process[i].turnaroundTime = 0;
+
+    }
+    printf("Gantt Chart:\n");
+
+    while(currentTime < PERIOD){
+        for (i = 0;  i<PERIOD ; i++) {
+            shortestIndex = -1;
+            int smallest = PERIOD;
+
+            for (j = 0; j < PROCESSES_NUM; j++) {
+                if (process[j].arrivalTime <= i && process[j].remainingTime < smallest && process[j].executedTime == 0) {
+                    smallest = process[j].remainingTime;
+                    shortestIndex = j;
+                }
+            }
+            if (shortestIndex != -1) {
+                printf("P%d| ", shortestIndex + 1);
+                process[shortestIndex].remainingTime--;
+
+                if (process[shortestIndex].remainingTime == 0) {
+                    process[shortestIndex].executedTime = 1;
+                }
+            }else{
+                   //printf("-");
+            }
+        }
+        for (i = 0; i < PROCESSES_NUM; i++) {
+            if (currentTime < process[i].arrivalTime) {
+                currentTime++;
+            }
+
+            if (process[i].remainingTime > (PERIOD - currentTime)) { // check the remaining time of the process
+                process[i].completionTime = PERIOD - currentTime;
+            } else {
+                process[i].completionTime = process[i].remainingTime; //10
+            }
+            currentTime = currentTime + process[i].completionTime; //10
+            process[i].remainingTime = process[i].remainingTime - process[i].completionTime; //0
+            if (process[i].remainingTime == 0) {
+               // Process completes its burst time, goes to waiting queue, and comes back after the specified time
+                process[i].arrivalTime = currentTime + process[i].comesBackAfter; //12
+                process[i].remainingTime = process[i].burstTime;//10
+
+
+            }
+
+            process[i].waitingTime = currentTime - process[i].burstTime;
+            process[i].turnaroundTime = process[i].waitingTime + process[i].burstTime;
+
+
+
+        }
+
+
+        if (currentTime >= PERIOD) {
+            break;
+        }
+    }
+    printf("\n\n");
+// calculate the average waiting,turnaround time
+    for ( j = 0; j < PROCESSES_NUM; j++) {
+        waiting+=process[j].waitingTime;
+        turnaround+=process[j].turnaroundTime;
+
+    }
+    avgW= (double )waiting/PROCESSES_NUM;
+    avgT= (double )turnaround/PROCESSES_NUM;
+    printf("Average Waiting Time  %f ms\n",avgW);
+    printf("Average Turnaround Time %f ms\n",avgT);
+
+
+}
+void roundRobin(cpuScheduling process[]) {
+    int currentTime = 0, i, quantum = 5,flag=0;
+    int n=PROCESSES_NUM;
+    int sum=0,waiting=0,turnaround=0;
+    double avgW,avgT;
+    int temp[PROCESSES_NUM];
+    for (int j = 0; j < PROCESSES_NUM; j++) {
+        temp[j]=process[j].burstTime;
+        process[j].waitingTime = 0;
+        process[j].completionTime = 0;
+        process[j].turnaroundTime = 0;
+        process[j].remainingTime = process[j].burstTime;
+
+    }
+    printf("Gantt Chart:\n");
+    while(currentTime <= PERIOD){
+        for (sum =0,i=0; n!=0;) {
+            if (temp[i] <= quantum && temp[i]> 0) {
+            sum=sum+temp[i];
+                temp[i]=0;
+                 flag=1;
+
+            }
+            else if(temp[i]>0){
+                temp[i]-=quantum;
+                sum+=quantum;
+            }
+
+            if(temp[i]==0 && flag==1){
+                n--; // decrement the number of process
+               printf("P%d ",i+1);
+                process[i].waitingTime+=sum-process[i].arrivalTime-process[i].burstTime;
+                process[i].turnaroundTime+=sum-process[i].arrivalTime;
+                flag=0;
+            }
+
+            if(i==PROCESSES_NUM-1) {
+                i = 0;
+            }
+            else if(process[i+1].arrivalTime<=sum){
+                i++;
+
+            }
+            else{
+                i=0;
+            }
+        }
+        flag=0,sum=0;
+        for (int k = 0; k < PROCESSES_NUM; k++) {
+            if (currentTime < process[k].arrivalTime) {
+                currentTime++;
+            }
+
+            if (process[k].remainingTime > (PERIOD - currentTime)) { // check the remaining time of the process
+                process[k].completionTime = PERIOD - currentTime;
+            } else {
+                process[k].completionTime = process[k].remainingTime; //10
+            }
+            currentTime = currentTime + process[k].completionTime; //10
+            process[k].remainingTime = process[k].remainingTime - process[k].completionTime; //0
+            if (process[k].remainingTime == 0) {
+                // Process completes its burst time, goes to waiting queue, and comes back after the specified time
+                process[k].arrivalTime = currentTime + process[k].comesBackAfter; //12
+                process[k].remainingTime = process[k].burstTime;//10
+
+
+            }
+
+            process[k].waitingTime = currentTime - process[k].burstTime;
+            process[k].turnaroundTime = process[k].waitingTime + process[k].burstTime;
+
+
+        }
+            if (currentTime >= PERIOD) {
+                break;
+            }
+
+
+    }
+    printf("\n\n");
+    // calculate the average waiting,turnaround time
+    for (int j = 0; j < PROCESSES_NUM; j++) {
+        waiting+=process[j].waitingTime;
+        turnaround+=process[j].turnaroundTime;
+
+    }
+    avgW= (double )waiting/PROCESSES_NUM;
+    avgT= (double )turnaround/PROCESSES_NUM;
+    printf("Average Waiting Time  %f ms\n",avgW);
+    printf("Average Turnaround Time %f ms\n",avgT);
+
+
+
+}
+void preemptivePriority(cpuScheduling processes[]){
+    int currentTime = 0,waiting=0,turnaround=0,i;
+    double avgW,avgT;
+    for (i = 0; i < PROCESSES_NUM; i++) {
+        processes[i].waitingTime = 0;
+        processes[i].turnaroundTime = 0;
+
+    }
+    printf("Gantt Chart:\n");
+    while (currentTime< PERIOD) {
+        int highestPriority = 9;
+        int Index = -1;
+        for (i = 0; i < PROCESSES_NUM; i++) {
+            if (processes[i].arrivalTime <= currentTime && processes[i].priority < highestPriority &&
+                processes[i].remainingTime > 0) {
+                highestPriority = processes[i].priority;
+                Index = i;
+            }
+        }
+
+        if (Index != -1) {
+           printf("P%d ",Index + 1);
+            processes[Index].remainingTime--;
+
+            if (processes[Index].remainingTime == 0) {
+                processes[Index].executedTime = 1;
+                // Calculate waiting time and turnaround time here
+                processes[Index].waitingTime = currentTime- processes[Index].burstTime;
+                processes[Index].turnaroundTime = processes[Index].waitingTime + processes[Index].burstTime;
+            }
+        } else {
+         // printf("-");
+        }
+        currentTime++;
+        if (currentTime % 5 == 0) {
+            // Aging: Decrement priority by 1 if process remains in ready queue for 5 time units
+            for (i = 0; i < PROCESSES_NUM; i++) {
+                if (processes[i].arrivalTime <= currentTime && processes[i].executedTime == 0) {
+                    processes[i].priority--;
+
+                }
+            }
+        }
+
+        if(currentTime>PERIOD){
+            break;
+        }
+
+
+    }
+    printf("\n\n");
+   // calculate the average waiting,turnaround time
+    for ( int j = 0; j < PROCESSES_NUM; j++) {
+        waiting+=processes[j].waitingTime;
+        turnaround+=processes[j].turnaroundTime;
+
+    }
+    avgW= (double )waiting/PROCESSES_NUM;
+    avgT= (double )turnaround/PROCESSES_NUM;
+    printf("Average Waiting Time  %f ms\n",avgW);
+    printf("Average Turnaround Time %f ms\n",avgT);
+
+}
+void nonPreemptivePriority(cpuScheduling processes[]){
+    int currentTime = 0,waiting=0,turnaround=0,i;
+    double avgW,avgT;
+    for (i = 0; i < PROCESSES_NUM; i++) {
+        processes[i].waitingTime = 0;
+        processes[i].turnaroundTime = 0;
+
+    }
+    printf("Gantt Chart:\n");
+    while (currentTime < PERIOD) {
+        int highestPriority = 9;
+        int Index = -1;
+
+        for (i = 0; i < PROCESSES_NUM; i++) {
+            if (processes[i].arrivalTime <= currentTime && processes[i].priority < highestPriority && processes[i].remainingTime > 0) {
+                highestPriority = processes[i].priority;
+                Index = i;
+            }
+        }
+
+        if (Index != -1) {
+            printf("P%d ", Index + 1);
+            currentTime += processes[Index].burstTime;
+            processes[Index].waitingTime = currentTime - processes[Index].arrivalTime - processes[Index].burstTime;
+            processes[Index].turnaroundTime = processes[Index].waitingTime + processes[Index].burstTime;
+            processes[Index].remainingTime = 0;
+            processes[Index].executedTime = 1;
+
+        }else {
+            currentTime++;
+
+        }
+
+        if (currentTime % 1 == 0) {
+            // Aging: Decrement priority by 1 if process remains in ready queue for 5 time units
+            for (i = 0; i < PROCESSES_NUM; i++) {
+                if (processes[i].arrivalTime <= currentTime && processes[i].executedTime == 0) {
+                    processes[i].priority--;
+
+                }
+            }
+        }
+
+        if(currentTime>PERIOD){
+            break;
+        }
+
+    }
+    printf("\n\n");
+    // calculate the average waiting,turnaround time
+    for ( int j = 0; j < PROCESSES_NUM; j++) {
+        waiting+=processes[j].waitingTime;
+        turnaround+=processes[j].turnaroundTime;
+
+    }
+    avgW= (double )waiting/PROCESSES_NUM;
+    avgT= (double )turnaround/PROCESSES_NUM;
+    printf("Average Waiting Time  %f ms\n",avgW);
+    printf("Average Turnaround Time %f ms\n",avgT);
+
+
+}
+int main() {
+ cpuScheduling process[PROCESSES_NUM]={
+        {1,0, 10,10 , 2, 3,0,0,0},
+        {2,1, 8, 8, 4, 2, 0,0,0,0},
+        {3,3, 14, 14, 6, 3, 0,0,0,0},
+        {4, 4, 7, 7, 8, 1,0,0,0,0},
+        {5, 6, 5, 5, 3, 0,0,0,0,0},
+        {6, 7, 4, 4, 6, 1,0,0,0,0},
+        {7, 8, 6, 6, 9, 2,0,0,0,0}
+
+};
+    printf("\t\t\t\t ------------- Noura khdour 1212072 sec:3 -------------\n");
+    printf("\t\t\t\t-----------------------------------------------------------\n\n");
+
+    do{ printf("\n");
+        printf("1-First Come First Served\n");
+        printf("2-Shortest Job First\n");
+        printf("3-Shortest Remaining Time First\n");
+        printf("4-Round Robin\n");
+        printf("5-Preemptive Priority Scheduling\n");
+        printf("6-Non-preemptive Priority Scheduling\n");
+        printf("7-Exit\n");
+        printf("**Enter the number of instruction\n");
+        int choice;
+        scanf("%d",&choice);
+        if(choice==1){
+            printf("----- First Come First Served scheduling-----\n");
+            firstComeFirstServed(process);
+        }
+        if(choice==2){
+         printf("----- Shortest Job First scheduling ------\n");
+         shortestJobFirst(process);
+        }
+
+        if(choice==3){
+            printf("------ Shortest Remaining Time First scheduling ------\n");
+            shortestRemainingTimeFirst(process);
+
+        }
+        if(choice==4){
+            printf("----- Round Robin scheduling -----\n");
+            roundRobin(process);
+        }
+        if(choice==5){
+            printf("----- Preemptive Priority scheduling ------\n");
+            preemptivePriority(process);
+        }
+       if(choice==6){
+           printf(" ------Non-Preemptive Priority scheduling ------\n");
+           nonPreemptivePriority(process);
+
+       }
+       if(choice==7){
+           printf("Exit the program :)\n");
+           exit(1);
+       }
+    } while (1);
+
+    return 0;
+}
+//
